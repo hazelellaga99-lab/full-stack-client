@@ -11,22 +11,28 @@ function Profile() {
   const [listOfPosts, setListOfPosts] = useState([]);
 
   useEffect(() => {
-    // if (authState.status === false) {
-    if (!localStorage.getItem("accessToken")) {
-      navigate("/login");
-    } else {
-      //   // fetch the post data using the id
-      axios
-        .get(`http://localhost:3001/auth/basicinfo/${id}`)
-        .then((response) => {
-          setUserInfo(response.data);
-        });
-      axios
-        .get(`http://localhost:3001/posts/byUserId/${id}`)
-        .then((response) => {
-          setListOfPosts(response.data);
-        });
-    }
+    axios.get("http://localhost:3001/auth/auth").then((response) => {
+      if (response.data.error) {
+        navigate("/login");
+      } else {
+        //   // fetch the post data using the id
+        axios
+          .get(`http://localhost:3001/auth/basicinfo/${id}`)
+          .then((response) => {
+            if (!response.data) {
+              navigate("/not-found", { replace: true });
+            } else {
+              setUserInfo(response.data);
+            }
+          })
+          .catch(() => navigate("/not-found", { replace: true }));
+        axios
+          .get(`http://localhost:3001/posts/byUserId/${id}`)
+          .then((response) => {
+            setListOfPosts(response.data);
+          });
+      }
+    });
   }, [id, navigate]);
 
   return (

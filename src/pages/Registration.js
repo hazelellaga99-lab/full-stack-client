@@ -10,10 +10,11 @@ function Registration() {
   // const { authState } = useContext(AuthContext);
 
   useEffect(() => {
-    // if (authState.status === true) {
-    if (localStorage.getItem("accessToken")) {
-      navigate("/");
-    }
+    axios.get("http://localhost:3001/auth/auth").then((response) => {
+      if (!response.data.error) {
+        navigate("/");
+      }
+    });
   }, [navigate]);
 
   const initialValues = {

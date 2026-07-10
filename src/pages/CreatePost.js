@@ -3,17 +3,20 @@ import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 // import { AuthContext } from "../helpers/AuthContext";
 
 function CreatePost() {
   let navigate = useNavigate();
+  const queryClient = useQueryClient();
   // const { authState } = useContext(AuthContext);
 
   useEffect(() => {
-    // if (authState.status === false) {
-    if (!localStorage.getItem("accessToken")) {
-      navigate("/login");
-    }
+    axios.get("http://localhost:3001/auth/auth").then((response) => {
+      if (response.data.error) {
+        navigate("/login");
+      }
+    });
   }, [navigate]);
 
   const initialValues = {
@@ -22,17 +25,22 @@ function CreatePost() {
     // username: "",
   };
 
-  const onSubmit = (data) => {
-    // console.log(data);
-    // data.username = authState.username; // Set the username to the logged-in user's username
-    axios
-      .post("http://localhost:3001/posts", data, {
-        headers: { accessToken: localStorage.getItem("accessToken") },
-      })
-      .then((response) => {
-        // console.log(response);
-        navigate("/");
+  const createPostMutation = useMutation({
+    mutationFn: async (data) => {
+      const response = await axios.post("http://localhost:3001/posts", data, {
+        withCredentials: true,
       });
+
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      navigate("/");
+    },
+  });
+
+  const onSubmit = (data) => {
+    createPostMutation.mutate(data);
   };
 
   const validationSchema = Yup.object().shape({

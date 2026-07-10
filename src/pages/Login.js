@@ -10,10 +10,11 @@ function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // if (authState.status === true) {
-    if (localStorage.getItem("accessToken")) {
-      navigate("/");
-    }
+    axios.get("http://localhost:3001/auth/auth").then((response) => {
+      if (!response.data.error) {
+        navigate("/");
+      }
+    });
   }, [navigate]);
 
   const login = () => {
@@ -24,8 +25,6 @@ function Login() {
         alert(response.data.error);
         return;
       } else {
-        // Handle successful login, e.g., store token, redirect, etc.
-        localStorage.setItem("accessToken", response.data.token);
         setAuthState({
           username: response.data.username,
           id: response.data.id,

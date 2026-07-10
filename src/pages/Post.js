@@ -1,33 +1,55 @@
 import axios from "axios";
 import { useEffect, useState, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { AuthContext } from "../helpers/AuthContext";
+
+const fetchPostById = async (id) => {
+  const response = await axios.get(`http://localhost:3001/posts/byId/${id}`);
+  return response.data;
+};
+
+const fetchCommentsByPostId = async (id) => {
+  const response = await axios.get(`http://localhost:3001/comments/${id}`);
+  return response.data;
+};
 
 function Post() {
   let { id } = useParams();
-  const [postObject, setPostObject] = useState({});
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const { authState } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  const { data: postData, isLoading: isPostLoading } = useQuery({
+    queryKey: ["post", id],
+    queryFn: () => fetchPostById(id),
+    enabled: true,
+    retry: false,
+  });
+
+  const { data: commentsData, isLoading: isCommentsLoading } = useQuery({
+    queryKey: ["comments", id],
+    queryFn: () => fetchCommentsByPostId(id),
+    enabled: true,
+    retry: false,
+  });
+
   useEffect(() => {
-    // if (authState.status === false) {
-    if (!localStorage.getItem("accessToken")) {
-      navigate("/login");
-    } else {
-      // fetch the post data using the id
-      axios.get(`http://localhost:3001/posts/byId/${id}`).then((response) => {
-        setPostObject(response.data);
-
-        // console.log(response.data);
-      });
-
-      axios.get(`http://localhost:3001/comments/${id}`).then((response) => {
-        setComments(response.data);
-      });
+    if (!isPostLoading && postData == null) {
+      navigate("/not-found", { replace: true });
     }
-  }, [id, navigate]);
+  }, [isPostLoading, postData, navigate]);
+
+  useEffect(() => {
+    axios.get("http://localhost:3001/auth/auth").then((response) => {
+      if (response.data.error) {
+        navigate("/login");
+      } else if (commentsData) {
+        setComments(commentsData);
+      }
+    });
+  }, [commentsData, id, navigate]);
 
   const addComment = () => {
     axios
@@ -37,11 +59,7 @@ function Post() {
           commentBody: newComment,
           PostId: id,
         },
-        {
-          headers: {
-            accessToken: localStorage.getItem("accessToken"),
-          },
-        },
+        {},
       )
       .then((response) => {
         if (response.data.error) {
@@ -58,31 +76,19 @@ function Post() {
   };
 
   const deleteComment = (id) => {
-    axios
-      .delete(`http://localhost:3001/comments/${id}`, {
-        headers: {
-          accessToken: localStorage.getItem("accessToken"),
-        },
-      })
-      .then(() => {
-        setComments(
-          comments.filter((val) => {
-            return val.id !== id;
-          }),
-        );
-      });
+    axios.delete(`http://localhost:3001/comments/${id}`, {}).then(() => {
+      setComments(
+        comments.filter((val) => {
+          return val.id !== id;
+        }),
+      );
+    });
   };
 
   const deletePost = (id) => {
-    axios
-      .delete(`http://localhost:3001/posts/${id}`, {
-        headers: {
-          accessToken: localStorage.getItem("accessToken"),
-        },
-      })
-      .then(() => {
-        navigate("/");
-      });
+    axios.delete(`http://localhost:3001/posts/${id}`, {}).then(() => {
+      navigate("/");
+    });
   };
 
   const editPost = (option) => {
@@ -97,11 +103,9 @@ function Post() {
           newTitle: newTitle,
           id: id,
         },
-        {
-          headers: { accessToken: localStorage.getItem("accessToken") },
-        },
+        {},
       );
-      setPostObject({ ...postObject, title: newTitle });
+      setComments(comments);
     } else {
       let newPostText = prompt("Enter New Text: ");
       if (newPostText === null || newPostText.trim() === "") {
@@ -113,13 +117,17 @@ function Post() {
           newText: newPostText,
           id: id,
         },
-        {
-          headers: { accessToken: localStorage.getItem("accessToken") },
-        },
+        {},
       );
-      setPostObject({ ...postObject, postText: newPostText });
+      setComments(comments);
     }
   };
+
+  if (isPostLoading || isCommentsLoading) {
+    return <div>Loading post...</div>;
+  }
+
+  const postObject = postData || {};
 
   return (
     <div className="postPage">

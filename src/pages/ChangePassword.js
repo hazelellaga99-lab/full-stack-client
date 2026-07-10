@@ -8,10 +8,11 @@ function ChangePassword() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // if (authState.status === false) {
-    if (!localStorage.getItem("accessToken")) {
-      navigate("/login");
-    }
+    axios.get("http://localhost:3001/auth/auth").then((response) => {
+      if (response.data.error) {
+        navigate("/login");
+      }
+    });
   }, [navigate]);
 
   const changePassword = () => {
@@ -22,9 +23,7 @@ function ChangePassword() {
           oldPassword: oldPassword,
           newPassword: newPassword,
         },
-        {
-          headers: { accessToken: localStorage.getItem("accessToken") },
-        },
+        {},
       )
       .then((response) => {
         if (response.data.error) {

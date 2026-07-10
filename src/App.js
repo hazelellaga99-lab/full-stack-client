@@ -2,7 +2,6 @@ import "./App.css";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
-
 import Home from "./pages/Home";
 import CreatePost from "./pages/CreatePost";
 import Post from "./pages/Post";
@@ -11,8 +10,29 @@ import Registration from "./pages/Registration";
 import PageNotFound from "./pages/PageNotFound";
 import Profile from "./pages/Profile";
 import ChangePassword from "./pages/ChangePassword";
-
 import { AuthContext } from "./helpers/AuthContext";
+
+axios.defaults.withCredentials = true;
+
+let csrfToken = null;
+
+const getCsrfToken = async () => {
+  if (csrfToken) return csrfToken;
+
+  const response = await axios.get("http://localhost:3001/auth/csrf-token");
+  csrfToken = response.data.csrfToken;
+  return csrfToken;
+};
+
+axios.interceptors.request.use(async (config) => {
+  if (
+    ["post", "put", "patch", "delete"].includes(config.method?.toLowerCase())
+  ) {
+    const token = await getCsrfToken();
+    config.headers["X-CSRF-Token"] = token;
+  }
+  return config;
+});
 
 function App() {
   const [authState, setAuthState] = useState({
@@ -22,27 +42,24 @@ function App() {
   });
 
   useEffect(() => {
-    axios
-      .get("http://localhost:3001/auth/auth", {
-        headers: { accessToken: localStorage.getItem("accessToken") },
-      })
-      .then((response) => {
-        if (response.data.error) {
-          setAuthState({ username: "", id: 0, status: false });
-        } else {
-          setAuthState({
-            username: response.data.username,
-            id: response.data.id,
-            status: true,
-          });
-        }
-      });
+    axios.get("http://localhost:3001/auth/auth").then((response) => {
+      if (response.data.error) {
+        setAuthState({ username: "", id: 0, status: false });
+      } else {
+        setAuthState({
+          username: response.data.username,
+          id: response.data.id,
+          status: true,
+        });
+      }
+    });
   }, []);
 
   const logout = () => {
-    localStorage.removeItem("accessToken");
-    setAuthState({ username: "", id: 0, status: false });
-    window.location.href = "/login"; // Redirect to login page after logout
+    axios.post("http://localhost:3001/auth/logout").finally(() => {
+      setAuthState({ username: "", id: 0, status: false });
+      window.location.href = "/login";
+    });
   };
 
   return (
@@ -74,6 +91,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/registration" element={<Registration />} />
             <Route path="/profile/:id" element={<Profile />} />
+            <Route path="/not-found" element={<PageNotFound />} />
             <Route path="/changepassword" element={<ChangePassword />} />
             <Route path="*" element={<PageNotFound />} />
           </Routes>
