@@ -106,6 +106,9 @@ function Home() {
               </div>
               <div className="buttons">
                 <ThumbUpIcon
+                  data-testid={`like-button-${value.id}`}
+                  role="button"
+                  aria-label={`like-button-${value.id}`}
                   className={
                     likedPosts.includes(value.id) ? "unlikeBttn" : "likeBttn"
                   }
